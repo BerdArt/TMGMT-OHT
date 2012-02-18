@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * @file
+ * Module file of the translation management OHT module.
+ *
+ * http://onehourtranslation.com/
+ *
+ * Implemented by Artem Berdishev, AMgrade
+ */
+
+/**
+ * Implements hook_tmgmt_translator_plugin_info().
+ */
+function tmgmt_oht_tmgmt_translator_plugin_info() {
+  return array(
+    'oht' => array(
+      'label' => t('OHT translator'),
+      'description' => t('A OneHourTranslation translator service.'),
+      'plugin controller class' => 'TMGMTOhtPluginController',
+      'ui controller class' => 'TMGMTOhtTranslatorUIController',
+    ),
+  );
+}
