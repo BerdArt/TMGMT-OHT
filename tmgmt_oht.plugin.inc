@@ -95,15 +95,17 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
    * We will check are source and target language supported.
    */
   public function canTranslate(TMGMTJob $job) {
-/*    $translator = $job->getTranslator();
-    if ($this->isAvailable($translator)) {
-      $targets = $this->getSupportedTargetLanguages($translator, $job->source_language);
-      if (isset($targets[$job->target_language])) {
-        return TRUE;
-      }
+    $translator = $job->getTranslator();
+    // if we use sandbox we can translate anyway
+    if($translator->getSetting('use_sandbox')) {
+      return TRUE;
     }
-    return FALSE;*/
-    return TRUE;
+    // if Translator is configured - check if the source and target language are supported.
+    if ($this->isAvailable($translator)) {
+      $targets = $this->getSupportedLanguages();
+      return isset($targets[$job->source_language]) && isset($targets[$job->target_language]);
+    }
+    return FALSE;
   }
 
   /**
@@ -114,7 +116,6 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
   public function requestTranslation(TMGMTJob $job) {
     // Pull the source data array through the job and flatten it.
     $data = $this->prepareDataForSending($job);
-//    dsm($job, 'Job');
     $translator = $job->getTranslator();
     $languages = $this->getSupportedLanguages();
 
