@@ -22,3 +22,37 @@ function tmgmt_oht_tmgmt_translator_plugin_info() {
     ),
   );
 }
+
+/**
+ * Implements hook_menu().
+ */
+function tmgmt_oht_menu() {
+  return array(
+    'tmgmt_oht_callback' => array(
+      'title' => 'TMGMT OHT Callback',
+      'description' => '',
+      'page callback' => 'tmgmt_oht_callback',
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+    'tmgmt_oht_text' => array(
+      'title' => 'TMGMT OHT Callback',
+      'description' => '',
+      'page callback' => 'tmgmt_oht_test',
+      'access callback' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Callback for OHT requests.
+ */
+function tmgmt_oht_callback() {
+//  $data = json_decode($_POST['job']);
+
+watchdog('tmgmt_oht', 'receive data => @data', array('@data' => $_POST));
+//  $job = tmgmt_job_load($tjid);
+//  $oht = $job->getTranslator()->getController();
+//  $oht->receiveTranslation($job, $keys, $data);
+  print '';
+}

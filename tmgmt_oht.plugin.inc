@@ -15,8 +15,8 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
    *
    * @var string
    */
-  protected $apiURL = 'http://api.onehourtranslation.com/';
-  protected $sandboxURL = 'http://sandbox.onehourtranslation.com/';
+  protected $apiURL = 'https://api.onehourtranslation.com/';
+  protected $sandboxURL = 'https://sandbox.onehourtranslation.com/';
   protected $supportedLanguages = array(
     'sq' => 'sq-al',
     'ar' => 'ar-sa',
@@ -62,7 +62,7 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
     'pt-br' => 'pt-br',
     'pt-pt' => 'pt-pt',
     'ro' => 'ro-ro',
-    'ro' => 'ru-ru',
+    'ru' => 'ru-ru',
     'sr' => 'sr-rs',
     'sk' => 'sk-sk',
     'sl' => 'sl-si',
@@ -114,24 +114,33 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
   public function requestTranslation(TMGMTJob $job) {
     // Pull the source data array through the job and flatten it.
     $data = $this->prepareDataForSending($job);
-    dsm($job, 'Job');
-    dsm($job->getSourceData(), 'Data-raw');
-    dsm($data, 'Data');
-/*    $translations = $this->generateMyGengoTranslationJobArray($job, $job->settings['quality']);
+//    dsm($job, 'Job');
+    $translator = $job->getTranslator();
+    $languages = $this->getSupportedLanguages();
 
-    $response = $this->requestFromGengo($job->getTranslator(), 'translate/jobs', 'POST', array(
-      'jobs' => $translations,
-      'process' => 1,
-      'as_group' => 1
-      ));
+    // request translation from OHT service
+    $response = $this->doRequest($job->getTranslator(), 'api/1/project/new', array(
+      'source' => $translator->getSetting('use_sandbox') ? 'en-us' : $languages[$job->source_language],
+      'target' => $translator->getSetting('use_sandbox') ? 'fr-fr' : $languages[$job->target_language],
+      'source_text' => $data,
+      'callback_url' => url('tmgmt_oht_callback', array('absolute' => TRUE)),
+      'custom0' => $job->tjid,
+    ));
 
-    if (!empty($response)) {
-      $job->submitted('Job has been submitted.');
+    // handling reponse
+    dsm($response, 'Response');
+    $response_data = json_decode($response->data);
+
+    if ($response->code == '200' && empty($response_data->status_code)) {
+      $job->submitted('Job has been successfully submitted for translation. Project ID is: <pre>@project_id</pre>',
+        array('@project_id' => $response_data->project_id));
+      $job->addMessage('Response data: @response', array('@response' => $response_data));
+      $job->reference = $response_data->project_id;
     }
     else {
-      // @todo: Get a error message from mygengo.
-      $job->rejected('Job has been rejected.');
-    }*/
+//      $job->rejected('Could not send Job to OHT. Message error: @error',
+//        array('@error' => $response_data->status_msg), 'error');
+    }
   }
 
   /**
@@ -155,7 +164,17 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
    * @return array
    */
   public function getSupportedTargetLanguages(TMGMTTranslator $translator, $source_language) {
-    return drupal_map_assoc(array_values($this->supportedLanguages));
+    return drupal_map_assoc(array_keys($this->supportedLanguages));
+  }
+
+  /**
+   * Returns array of supported languages by OHT service
+   * @return array
+   * Returns array of the supported languages.
+   * The key is drupal-style language code, the value - OHT-style language code.
+   */
+  protected function getSupportedLanguages() {
+    return $this->supportedLanguages;
   }
 
   /**
@@ -182,12 +201,21 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
       $url = $translator->getSetting('use_sandbox') ? $this->sandboxURL : $this->apiURL;
     }
     $url .= $path;
-    // Add the account_id and secret_key to the query arguments and build the query string.
+
+    // Build query array to pass to OHT service
     $query = array(
       'account_id' => $translator->getSetting('api_account_id'),
       'secret_key' => $translator->getSetting('api_secret_key'),
     ) + $query;
-    $url = url($url, array('query' => $query));
+//    $data = array();
+//    foreach($query as $key => $value) {
+//      $data[] = $key . '=' . $value;
+//    }
+    $options += array(
+      'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
+      'method' => 'POST',
+      'data' => drupal_http_build_query($query),
+    );
     return drupal_http_request($url, $options);
   }
 
