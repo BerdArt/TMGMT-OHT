@@ -38,7 +38,8 @@ function tmgmt_oht_menu() {
     'tmgmt_oht_text' => array(
       'title' => 'TMGMT OHT Callback',
       'description' => '',
-      'page callback' => 'tmgmt_oht_test',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('tmgmt_oht_post_response'),
       'access callback' => TRUE,
     ),
   );
@@ -50,9 +51,34 @@ function tmgmt_oht_menu() {
 function tmgmt_oht_callback() {
 //  $data = json_decode($_POST['job']);
 
-watchdog('tmgmt_oht', 'receive data => @data', array('@data' => $_POST));
+watchdog('tmgmt_oht', 'receive data => <pre>@data</pre>', array('@data' => print_r($_POST, 1)));
 //  $job = tmgmt_job_load($tjid);
 //  $oht = $job->getTranslator()->getController();
-//  $oht->receiveTranslation($job, $keys, $data);
-  print '';
+//  $oht->receiveTranslation($job, $data);
+  exit('');
+}
+
+function tmgmt_oht_post_response() {
+  $form = array();
+  $form['params'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Parameters'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+
+  return $form;
+}
+
+function tmgmt_oht_post_response_submit($form, &$form_state) {
+  $params = $form_state['values']['params'];
+  $options = array(
+    'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
+    'method' => 'POST',
+    'data' => $params,
+  );
+  $response = drupal_http_request(url('tmgmt_oht_callback', array('absolute' => TRUE)), $options);
+  dsm($response, 'Response');
 }

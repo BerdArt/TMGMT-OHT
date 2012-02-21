@@ -125,7 +125,7 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
       'source_text' => $data,
       'callback_url' => url('tmgmt_oht_callback', array('absolute' => TRUE)),
       'custom0' => $job->tjid,
-    ));
+    ), 'POST');
 
     // handling reponse
     dsm($response, 'Response');
@@ -134,27 +134,31 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
     if ($response->code == '200' && empty($response_data->status_code)) {
       $job->submitted('Job has been successfully submitted for translation. Project ID is: <pre>@project_id</pre>',
         array('@project_id' => $response_data->project_id));
-      $job->addMessage('Response data: @response', array('@response' => $response_data));
+      $job->addMessage('Response data: <br /><pre>@response</pre>', array('@response' => print_r($response_data, 1)));
       $job->reference = $response_data->project_id;
     }
     else {
-//      $job->rejected('Could not send Job to OHT. Message error: @error',
-//        array('@error' => $response_data->status_msg), 'error');
+      $job->rejected('Could not send Job to OHT. Message error: @error',
+        array('@error' => $response_data->status_msg), 'error');
     }
   }
 
   /**
-   * Receives and stores a translation returned by myGengo.
+   * Receives and stores a translation returned by OHT.
    */
-  public function receiveTranslation(TMGMTJob $job, $keys, $data) {
-    // @todo Clean this up once sandbox and production return the same thing.
-/*    if ($job->getTranslator()->getSetting('use_sandbox')) {
-      $translation = $data->body_src;
+  public function receiveTranslation(TMGMTJob $job, $data) {
+    if (!empty($data->credits)){
+      $job->addMessage('@credits credits reduced from your account.', array('@credits' => $data->credits));
     }
-    else {
-      $translation = $data->body_tgt;
+
+    if (empty($data->translation_ready)) {
+      return;
     }
-    $job->addTranslatedData(array('#text' => $data->body_src), $keys);*/
+
+    $job->addMessage('The translation has been received.');
+    $url = "api/1/project/$job->reference/contents/";
+    $response = $this->doRequest($job->getTranslator(), $url);
+    dsm($response, 'Translation response');
   }
 
   /**
@@ -193,7 +197,9 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
    * @return
    *   The response object returned by drupal_http_request().
    */
-  protected function doRequest(TMGMTTranslator $translator, $path, array $query = array(), array $options = array()) {
+  protected function doRequest(TMGMTTranslator $translator, $path, array $query = array(), $method = 'GET') {
+    $options = array();
+
     if ($custom_url = $translator->getSetting('url')) {
       $url = $custom_url;
     }
@@ -207,15 +213,28 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
       'account_id' => $translator->getSetting('api_account_id'),
       'secret_key' => $translator->getSetting('api_secret_key'),
     ) + $query;
+
+    // If we will send GET request - add params to the URL
+    if ($method == 'GET') {
+      $url = url($url, array('query' => $query));
+    }
+    // otherwise - configure $options array
+    elseif ($method == 'POST') {
+      $options += array(
+        'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
+        'method' => 'POST',
+        'data' => drupal_http_build_query($query),
+      );
+    }
 //    $data = array();
 //    foreach($query as $key => $value) {
 //      $data[] = $key . '=' . $value;
 //    }
-    $options += array(
+/*    $options += array(
       'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
       'method' => 'POST',
       'data' => drupal_http_build_query($query),
-    );
+    );*/
     return drupal_http_request($url, $options);
   }
 
