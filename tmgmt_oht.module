@@ -35,13 +35,6 @@ function tmgmt_oht_menu() {
       'access callback' => TRUE,
       'type' => MENU_CALLBACK,
     ),
-    'tmgmt_oht_text' => array(
-      'title' => 'TMGMT OHT Callback',
-      'description' => '',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('tmgmt_oht_post_response'),
-      'access callback' => TRUE,
-    ),
   );
 }
 
@@ -49,36 +42,22 @@ function tmgmt_oht_menu() {
  * Callback for OHT requests.
  */
 function tmgmt_oht_callback() {
-//  $data = json_decode($_POST['job']);
-
-watchdog('tmgmt_oht', 'receive data => <pre>@data</pre>', array('@data' => print_r($_POST, 1)));
-//  $job = tmgmt_job_load($tjid);
-//  $oht = $job->getTranslator()->getController();
-//  $oht->receiveTranslation($job, $data);
+  // if translation submitted - handle it
+  if ($_POST['type'] == 'translation_submitted') {
+      $job = tmgmt_job_load($_POST['custom0']);
+      $oht = $job->getTranslator()->getController();
+      $oht->receiveTranslation($job, $_POST['translated_content']);
+  }
+  // otherwise - add message about status changing
+  elseif($_POST['type'] == 'status_change') {
+    $job = tmgmt_job_load(check_plain($_POST['custom0']));
+    $job->addMessage('Status for project @project changed to "@status". Estimated finish: @finish',
+      array(
+        '@project' => $_POST['project_id'],
+        '@status' => $_POST['project_status'],
+        '@finish' => format_date($_POST['estimate_finish']),
+      )
+    );
+  }
   exit('');
-}
-
-function tmgmt_oht_post_response() {
-  $form = array();
-  $form['params'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Parameters'),
-  );
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Submit'),
-  );
-
-  return $form;
-}
-
-function tmgmt_oht_post_response_submit($form, &$form_state) {
-  $params = $form_state['values']['params'];
-  $options = array(
-    'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
-    'method' => 'POST',
-    'data' => $params,
-  );
-  $response = drupal_http_request(url('tmgmt_oht_callback', array('absolute' => TRUE)), $options);
-  dsm($response, 'Response');
 }

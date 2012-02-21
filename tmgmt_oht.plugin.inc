@@ -128,12 +128,12 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
     ), 'POST');
 
     // handling reponse
-    dsm($response, 'Response');
     $response_data = json_decode($response->data);
 
     if ($response->code == '200' && empty($response_data->status_code)) {
       $job->submitted('Job has been successfully submitted for translation. Project ID is: <pre>@project_id</pre>',
         array('@project_id' => $response_data->project_id));
+      $job->addMessage('@credits credits reduced from your account.', array('@credits' => $response_data->credits));
       $job->addMessage('Response data: <br /><pre>@response</pre>', array('@response' => print_r($response_data, 1)));
       $job->reference = $response_data->project_id;
     }
@@ -147,18 +147,9 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
    * Receives and stores a translation returned by OHT.
    */
   public function receiveTranslation(TMGMTJob $job, $data) {
-    if (!empty($data->credits)){
-      $job->addMessage('@credits credits reduced from your account.', array('@credits' => $data->credits));
-    }
-
-    if (empty($data->translation_ready)) {
-      return;
-    }
-
-    $job->addMessage('The translation has been received.');
-    $url = "api/1/project/$job->reference/contents/";
-    $response = $this->doRequest($job->getTranslator(), $url);
-    dsm($response, 'Translation response');
+    $data = $this->parseTranslationData($data);
+    $job->finished('The translation has been received.');
+    $job->addTranslatedData($data);
   }
 
   /**
@@ -226,15 +217,7 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
         'data' => drupal_http_build_query($query),
       );
     }
-//    $data = array();
-//    foreach($query as $key => $value) {
-//      $data[] = $key . '=' . $value;
-//    }
-/*    $options += array(
-      'headers' => array('Content-Type' => 'application/x-www-form-urlencoded'),
-      'method' => 'POST',
-      'data' => drupal_http_build_query($query),
-    );*/
+
     return drupal_http_request($url, $options);
   }
 
@@ -249,6 +232,25 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
     foreach($data as $key => $value) {
       $items .= str_replace(array('@key', '@text'), array($key, $value['#text']), '<item key="@key"><text type="text/html"><![CDATA[@text]]></text></item>');
     }
+
     return '<items>' . $items .'</items>';
+  }
+
+  /**
+   * Parses received translation from OHT and returns unflatted data
+   * @param $data string Base64 encode data, receveived from OHT
+   * @return array Unflatted data
+   */
+  protected function parseTranslationData($data) {
+    $data = base64_decode($data);
+    $items = simplexml_load_string($data);
+    $data = array();
+
+    foreach($items->item as $item) {
+      $key = (string) $item['key'];
+      $data[$key]['#text'] = (string)$item->text;
+    }
+
+    return tmgmt_unflatten_data($data);
   }
 }
