@@ -94,8 +94,7 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
    *
    * We will check are source and target language supported.
    */
-  public function canTranslate(TMGMTJob $job) {
-    $translator = $job->getTranslator();
+  public function canTranslate(TMGMTTranslator $translator, TMGMTJob $job) {
     // if we use sandbox we can translate anyway
     if($translator->getSetting('use_sandbox')) {
       return TRUE;
@@ -219,6 +218,7 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
       );
     }
 
+
     return drupal_http_request($url, $options);
   }
 
@@ -228,7 +228,7 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
    * @return string
    */
   protected function prepareDataForSending(TMGMTJob $job) {
-    $data = array_filter(tmgmt_flatten_data($job->getSourceData()), '_tmgmt_filter_data');
+    $data = array_filter(tmgmt_flatten_data($job->getData()), '_tmgmt_filter_data');
     $items = '';
     foreach($data as $key => $value) {
       $items .= str_replace(array('@key', '@text'), array($key, $value['#text']), '<item key="@key"><text type="text/html"><![CDATA[@text]]></text></item>');
