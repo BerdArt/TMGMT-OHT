@@ -134,7 +134,6 @@ class TMGMTOhtPluginController extends TMGMTDefaultTranslatorPluginController {
       $job->submitted('Job has been successfully submitted for translation. Project ID is: <pre>@project_id</pre>',
         array('@project_id' => $response_data->project_id));
       $job->addMessage('@credits credits reduced from your account.', array('@credits' => $response_data->credits));
-      $job->addMessage('Response data: <br /><pre>@response</pre>', array('@response' => print_r($response_data, 1)));
       $job->reference = $response_data->project_id;
     }
     else {
